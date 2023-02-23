@@ -17,7 +17,6 @@ public class RedisRequestBuffer : RequestBuffer<string, byte[]>
         //read from redis
         var data = await _db.StringGetAsync(keys);
 
-        Console.Write(".");
         for (var i = 0; i < data.Length; i++)
         {
             try

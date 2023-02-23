@@ -13,23 +13,44 @@ var db = mp.GetDatabase();
 //     if (i % 100 == 0) {Console.Write(".");}
 //     await db.StringSetAsync("key" + i, Guid.NewGuid().ToByteArray());
 // }
-
-var tasks = new List<Task>();
-var rb = new RedisRequestBuffer(db, 10, 5000, TimeSpan.FromMilliseconds(300));
-rb.Run();
-
-var sw = Stopwatch.StartNew();
-for (var i = 0; i < 1_000_000; i++)
-{
-    var t= rb.Request("key" + i);
-    tasks.Add(t);
-}
-
-await Task.WhenAll(tasks);
-sw.Stop();
-Console.WriteLine(sw.Elapsed);
+await RunRawReader(db);
+await RunBufferedReader(db);
 
 Console.ReadLine();
+
+async Task RunBufferedReader(IDatabase database)
+{
+    var tasks = new List<Task>();
+    var rb = new RedisRequestBuffer(database, 10, 5000, TimeSpan.FromMilliseconds(300));
+    rb.Run();
+
+    var sw = Stopwatch.StartNew();
+    for (var i = 0; i < 1_000_000; i++)
+    {
+        var t = rb.Request("key" + i);
+        tasks.Add(t);
+    }
+
+    await Task.WhenAll(tasks);
+    sw.Stop();
+    Console.WriteLine(sw.Elapsed);
+}
+
+async Task RunRawReader(IDatabase database)
+{
+    var tasks = new List<Task>();
+
+    var sw = Stopwatch.StartNew();
+    for (var i = 0; i < 1_000_000; i++)
+    {
+        var t = db.StringGetAsync("key" + i);
+        tasks.Add(t);
+    }
+
+    await Task.WhenAll(tasks);
+    sw.Stop();
+    Console.WriteLine(sw.Elapsed);
+}
 
 //
 //
