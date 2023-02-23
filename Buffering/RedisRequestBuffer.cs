@@ -5,8 +5,7 @@ namespace Buffering;
 public class RedisRequestBuffer : RequestBuffer<string, byte[]>
 {
     private readonly IDatabase _db;
-
-
+    
     public RedisRequestBuffer(IDatabase db, int maxConcurrency = 10 , int batchSize=1000, TimeSpan? batchTime= null):base( maxConcurrency, batchSize, batchTime)
     {
         _db = db;
@@ -18,11 +17,19 @@ public class RedisRequestBuffer : RequestBuffer<string, byte[]>
         //read from redis
         var data = await _db.StringGetAsync(keys);
 
+        Console.Write(".");
         for (var i = 0; i < data.Length; i++)
         {
-            var v = (byte[])data[i]!;
-            //set results from redis
-            batch[i].Response.SetResult(v);
+            try
+            {
+                var v = (byte[])data[i]!;
+                //set results from redis
+                batch[i].Response.SetResult(v);
+            }
+            catch(Exception x)
+            {
+                batch[i].Response.TrySetException(x);
+            }
         }
     }
 }

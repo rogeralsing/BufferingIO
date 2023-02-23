@@ -7,12 +7,12 @@ public abstract class RequestBuffer<TRequest,TResponse>
     private readonly int _batchSize;
     private readonly TimeSpan _batchTime;
     private readonly Channel<RequestPair> _channel = Channel.CreateUnbounded<RequestPair>();
-    private SemaphoreSlim _semaphore;
+    private readonly SemaphoreSlim _semaphore;
     protected RequestBuffer(int maxConcurrency, int batchSize, TimeSpan? batchTime)
     {
         _batchSize = batchSize;
         _batchTime = batchTime ?? TimeSpan.FromMilliseconds(500);
-        _semaphore = new SemaphoreSlim(maxConcurrency);
+        _semaphore = new SemaphoreSlim(maxConcurrency,maxConcurrency);
     }
 
     protected record RequestPair(TRequest Request, TaskCompletionSource<TResponse> Response);
@@ -31,10 +31,15 @@ public abstract class RequestBuffer<TRequest,TResponse>
         {
             await foreach(var batch in _channel.Reader.ReadAllAsync().Chunk(_batchTime,_batchSize))
             {
-                //TODO: could probably do this in parallel, with max concurrency x
+                if (batch.Count == 0)
+                {
+                    await _channel.Reader.WaitToReadAsync();
+                    continue;
+                }
+
+                
                 await _semaphore.WaitAsync();
-                await RunBatch(batch);
-                _semaphore.Release();
+                _ = RunBatch(batch).ContinueWith(t => _semaphore.Release());
             }
         });
     }
