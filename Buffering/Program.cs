@@ -43,7 +43,7 @@ async Task RunRawReader(IDatabase database)
     var sw = Stopwatch.StartNew();
     for (var i = 0; i < 1_000_000; i++)
     {
-        var t = db.StringGetAsync("key" + i);
+        var t = database.StringGetAsync("key" + i);
         tasks.Add(t);
     }
 
